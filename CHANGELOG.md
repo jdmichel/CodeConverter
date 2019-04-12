@@ -1,12 +1,35 @@
 # Change Log
 All notable changes to the code converter will be documented here.
 
-# 6.5.0 TBC
+# 6.7.0 TBC
+
+* Downgrade Roslyn requirement in attempt to work with VS2017 15.3+
+
+### VB -> C#
+* Ensure "new()" generic constraint is last
+* Do not convert MyBase.Finalize, it's implicit
+* Standardize case of identifiers
+
+# 6.6.0 29/03/2019
+
+* Ask people to upgrade VS if missing languageservices
+
+### C# -> VB
+* Improve event identifier conversion
+
+### VB -> C#
+* Improve conversion of interpolated strings (format, alignment, escaping)
+
+# 6.5.0 03/03/2019
 * Avoid fatal error converting a project in a solution containing a website project (#243)
 * Improve best-effort conversion in the presence of errors
 * Improved nuget package and web converter's snippet detection
 * Exclude conversion-source-language files from converted project
 * Improve conversion of type casts
+* Web UI tweaks
+
+### C# -> VB
+* Fix for interpolated strings and switch statements in VS2019 Preview
 
 # 6.4.0 07/02/2019
 Fix initialization bug in VS2017

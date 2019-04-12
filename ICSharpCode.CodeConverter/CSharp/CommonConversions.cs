@@ -138,14 +138,14 @@ namespace ICSharpCode.CodeConverter.CSharp
             return (type, initializer);
         }
 
-        public ExpressionSyntax Literal(object o, string valueText = null) => GetLiteralExpression(o, valueText);
+        public ExpressionSyntax Literal(object o, string textForUser = null) => GetLiteralExpression(o, textForUser);
 
-        internal ExpressionSyntax GetLiteralExpression(object value, string fullText = null)
+        internal ExpressionSyntax GetLiteralExpression(object value, string textForUser = null)
         {
-            if (value is string valueText) {
-                fullText = GetStringValueText(valueText, fullText);
+            if (value is string valueTextForCompiler) {
+                textForUser = GetQuotedStringTextForUser(textForUser, valueTextForCompiler);
                 return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.StringLiteralExpression,
-                    SyntaxFactory.Literal(fullText, valueText));
+                    SyntaxFactory.Literal(textForUser, valueTextForCompiler));
             }
 
             if (value == null)
@@ -153,33 +153,33 @@ namespace ICSharpCode.CodeConverter.CSharp
             if (value is bool)
                 return SyntaxFactory.LiteralExpression((bool)value ? Microsoft.CodeAnalysis.CSharp.SyntaxKind.TrueLiteralExpression : Microsoft.CodeAnalysis.CSharp.SyntaxKind.FalseLiteralExpression);
 
-            fullText = fullText != null ? ConvertNumericLiteralValueText(fullText, value) : value.ToString();
+            textForUser = textForUser != null ? ConvertNumericLiteralValueText(textForUser, value) : value.ToString();
 
             if (value is byte)
-                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(fullText, (byte)value));
+                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(textForUser, (byte)value));
             if (value is sbyte)
-                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(fullText, (sbyte)value));
+                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(textForUser, (sbyte)value));
             if (value is short)
-                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(fullText, (short)value));
+                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(textForUser, (short)value));
             if (value is ushort)
-                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(fullText, (ushort)value));
+                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(textForUser, (ushort)value));
             if (value is int)
-                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(fullText, (int)value));
+                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(textForUser, (int)value));
             if (value is uint)
-                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(fullText, (uint)value));
+                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(textForUser, (uint)value));
             if (value is long)
-                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(fullText, (long)value));
+                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(textForUser, (long)value));
             if (value is ulong)
-                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(fullText, (ulong)value));
+                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(textForUser, (ulong)value));
 
             if (value is float)
-                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(fullText, (float)value));
+                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(textForUser, (float)value));
             if (value is double) {
                 // Important to use value text, otherwise "10.0" gets coerced to and integer literal of 10 which can change semantics
-                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(fullText, (double)value));
+                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(textForUser, (double)value));
             }
             if (value is decimal) {
-                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(fullText, (decimal)value));
+                return SyntaxFactory.LiteralExpression(Microsoft.CodeAnalysis.CSharp.SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(textForUser, (decimal)value));
             }
 
             if (value is char)
@@ -194,26 +194,32 @@ namespace ICSharpCode.CodeConverter.CSharp
             throw new ArgumentOutOfRangeException(nameof(value), value, null);
         }
 
-        internal string GetStringValueText(string valueText, string fullText)
+        internal string GetQuotedStringTextForUser(string textForUser, string valueTextForCompiler)
         {
-            var worthBeingAVerbatimString = IsWorthBeingAVerbatimString(valueText);
-            if (worthBeingAVerbatimString)
-            {
-                var valueWithReplacements = EscapeQuotes(valueText, fullText, true);
-                return $"@\"{valueWithReplacements}\"";
-            }
+            var sourceUnquotedTextForUser = Unquote(textForUser);
+            var worthBeingAVerbatimString = IsWorthBeingAVerbatimString(valueTextForCompiler);
+            var destQuotedTextForUser =
+                $"\"{EscapeQuotes(sourceUnquotedTextForUser, valueTextForCompiler, worthBeingAVerbatimString)}\"";
+            
+            return worthBeingAVerbatimString ? "@" + destQuotedTextForUser : destQuotedTextForUser;
 
-            string fullTextWithoutSurroundingQuotes = fullText.Substring(1, fullText.Length - 2);
-            return "\"" + EscapeQuotes(valueText, fullTextWithoutSurroundingQuotes, false) + "\"";
         }
 
-        internal string EscapeQuotes(string valueText, string fullText, bool isVerbatimString)
+        internal string EscapeQuotes(string unquotedTextForUser, string valueTextForCompiler, bool isVerbatimString)
         {
             if (isVerbatimString) {
-                return valueText.Replace("\"", "\"\"");
+                return valueTextForCompiler.Replace("\"", "\"\"");
             } else {
-                return fullText.Replace("\"\"", "\\\"");
+                return unquotedTextForUser.Replace("\"\"", "\\\"");
             }
+        }
+
+        private static string Unquote(string quotedText)
+        {
+            int firstQuoteIndex = quotedText.IndexOf("\"");
+            int lastQuoteIndex = quotedText.LastIndexOf("\"");
+            var unquoted = quotedText.Substring(firstQuoteIndex + 1, lastQuoteIndex - firstQuoteIndex - 1);
+            return unquoted;
         }
 
         public bool IsWorthBeingAVerbatimString(string s1)
@@ -225,7 +231,7 @@ namespace ICSharpCode.CodeConverter.CSharp
         ///  https://docs.microsoft.com/en-us/dotnet/visual-basic/programming-guide/language-features/data-types/type-characters
         //   https://stackoverflow.com/a/166762/1128762
         /// </summary>
-        private string ConvertNumericLiteralValueText(string valueText, object value)
+        private string ConvertNumericLiteralValueText(string textForUser, object value)
         {
             var replacements = new Dictionary<string, string> {
                 {"C", ""},
@@ -245,30 +251,30 @@ namespace ICSharpCode.CodeConverter.CSharp
                 {"&", "L"},
             };
             // Be careful not to replace only the "S" in "US" for example
-            var longestMatchingReplacement = replacements.Where(t => valueText.EndsWith(t.Key, StringComparison.OrdinalIgnoreCase))
+            var longestMatchingReplacement = replacements.Where(t => textForUser.EndsWith(t.Key, StringComparison.OrdinalIgnoreCase))
                 .GroupBy(t => t.Key.Length).OrderByDescending(g => g.Key).FirstOrDefault()?.SingleOrDefault();
 
             if (longestMatchingReplacement != null) {
-                valueText = valueText.ReplaceEnd(longestMatchingReplacement.Value);
+                textForUser = textForUser.ReplaceEnd(longestMatchingReplacement.Value);
             }
 
-            if (valueText.Length <= 2 || !valueText.StartsWith("&")) return valueText;
+            if (textForUser.Length <= 2 || !textForUser.StartsWith("&")) return textForUser;
 
-            if (valueText.StartsWith("&H", StringComparison.OrdinalIgnoreCase))
+            if (textForUser.StartsWith("&H", StringComparison.OrdinalIgnoreCase))
             {
-                return "0x" + valueText.Substring(2).Replace("M", "D"); // Undo any accidental replacements that assumed this was a decimal
+                return "0x" + textForUser.Substring(2).Replace("M", "D"); // Undo any accidental replacements that assumed this was a decimal
             }
 
-            if (valueText.StartsWith("&B", StringComparison.OrdinalIgnoreCase))
+            if (textForUser.StartsWith("&B", StringComparison.OrdinalIgnoreCase))
             {
-                return "0b" + valueText.Substring(2);
+                return "0b" + textForUser.Substring(2);
             }
 
             // Octal or something unknown that can't be represented with C# literals
             return value.ToString();
         }
 
-        public SyntaxToken ConvertIdentifier(SyntaxToken id, bool isAttribute = false)
+        public SyntaxToken ConvertIdentifier(SyntaxToken id, bool isAttribute = false, bool updateCase = false)
         {
             string text = id.ValueText;
 
@@ -279,6 +285,10 @@ namespace ICSharpCode.CodeConverter.CSharp
             if (id.SyntaxTree == _semanticModel.SyntaxTree) {
                 var symbol = _semanticModel.GetSymbolInfo(id.Parent).Symbol;
                 if (symbol != null && !string.IsNullOrWhiteSpace(symbol.Name)) {
+                    if (updateCase && text.Equals(symbol.Name, StringComparison.OrdinalIgnoreCase)) {
+                        text = symbol.Name;
+                    }
+
                     if (symbol.IsConstructor() && isAttribute) {
                         text = symbol.ContainingType.Name;
                         if (text.EndsWith("Attribute", StringComparison.OrdinalIgnoreCase))
